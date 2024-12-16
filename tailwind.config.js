@@ -1,16 +1,12 @@
-/** @type {import('tailwindcss').Config} */
+// tailwind.config.js
 module.exports = {
-    content: [
-      './src/**/*.{js,jsx}',  // Updated path to catch all files in src
-      './src/app/**/*.{js,jsx}',
-      './src/components/**/*.{js,jsx}',
-    ],
-    theme: {
-      extend: {
-        colors: {
-          background: 'rgb(var(--background-start-rgb))',
-        },
-      },
-    },
-    plugins: [],
-  }
+  content: [
+    "./src/**/*.{js,jsx}",  // Make sure this path is correct
+    "./src/components/**/*.{js,jsx}",
+    "./src/app/**/*.{js,jsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}

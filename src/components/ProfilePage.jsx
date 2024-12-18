@@ -17,40 +17,45 @@ const ProfilePage = ({ userProfile }) => {
   const categories = [
     {
       title: "Reading Profile",
-      icon: <Book className="w-5 h-5" />,
+      icon: <Book className="w-6 h-6" />,
       content: userProfile?.reading || "No reading profile information yet",
-      color: "blue"
-    },
-    {
-      title: "Interests",
-      icon: <Brain className="w-5 h-5" />,
-      content: userProfile?.interests || "No interests recorded yet",
-      color: "purple"
-    },
-    {
-      title: "Motivation",
-      icon: <Target className="w-5 h-5" />,
-      content: userProfile?.motivation || "No motivation information yet",
-      color: "green"
+      color: "blue",
+      description: "Your reading preferences and history"
     },
     {
       title: "Personal Context",
-      icon: <User className="w-5 h-5" />,
+      icon: <User className="w-6 h-6" />,
       content: userProfile?.personal || "No personal context added yet",
-      color: "orange"
+      color: "orange",
+      description: "Age, gender, and background information"
+    },
+    {
+      title: "Interests",
+      icon: <Brain className="w-6 h-6" />,
+      content: userProfile?.interests || "No interests recorded yet",
+      color: "purple",
+      description: "Areas you'd like to explore and learn about"
+    },
+    {
+      title: "Motivation",
+      icon: <Target className="w-6 h-6" />,
+      content: userProfile?.motivation || "No motivation information yet",
+      color: "green",
+      description: "What drives you to learn and grow"
     },
     {
       title: "Preferences",
-      icon: <History className="w-5 h-5" />,
+      icon: <History className="w-6 h-6" />,
       content: userProfile?.preferences || "No preferences set yet",
-      color: "pink"
+      color: "pink",
+      description: "Your preferred learning style and format"
     }
   ];
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        {/* Header with both buttons */}
+        {/* Header with buttons */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Your Profile</h1>
@@ -76,34 +81,37 @@ const ProfilePage = ({ userProfile }) => {
           </div>
         </div>
 
-        {/* Last Session Summary - Show only if there's recent session */}
+        {/* Last Session Summary */}
         {userProfile?.sessionHistory?.length > 0 && (
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-8">
-            <h2 className="text-sm font-medium text-blue-800 mb-2">Last Session Insights</h2>
-            <div className="text-sm text-blue-600">
+          <div className="bg-blue-50 border border-blue-100 rounded-lg p-6 mb-8">
+            <h2 className="text-lg font-medium text-blue-800 mb-3">Last Session Insights</h2>
+            <div className="text-blue-600">
               {userProfile.sessionHistory[userProfile.sessionHistory.length - 1].insights.map((insight, idx) => (
-                <p key={idx}>• {insight}</p>
+                <p key={idx} className="mb-2">• {insight}</p>
               ))}
             </div>
           </div>
         )}
 
-        {/* Profile Categories */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Profile Categories - Vertical Stack */}
+        <div className="space-y-6">
           {categories.map((category) => (
             <div
               key={category.title}
-              className={`bg-white rounded-lg border border-gray-200 p-4 
-                       hover:shadow-md transition-shadow`}
+              className="bg-white rounded-lg border border-gray-200 p-6 
+                       hover:shadow-md transition-shadow"
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div className={`p-2 rounded-lg bg-${category.color}-50 
+              <div className="flex items-center gap-4 mb-4">
+                <div className={`p-3 rounded-lg bg-${category.color}-50 
                               text-${category.color}-500`}>
                   {category.icon}
                 </div>
-                <h2 className="font-medium text-gray-900">{category.title}</h2>
+                <div>
+                  <h2 className="text-xl font-medium text-gray-900">{category.title}</h2>
+                  <p className="text-sm text-gray-500">{category.description}</p>
+                </div>
               </div>
-              <div className="text-gray-600 text-sm whitespace-pre-wrap">
+              <div className="text-gray-600 text-base pl-14">
                 {category.content}
               </div>
             </div>

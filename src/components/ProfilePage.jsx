@@ -1,11 +1,18 @@
 'use client';
 import React, { useState } from 'react';
-import { Book, Brain, Target, User, History } from 'lucide-react';
-import { useRouter } from 'next/router';
+import { Book, Brain, Target, User, History, MessageSquare, RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useProfile } from '../app/context/ProfileContext';
 
 const ProfilePage = ({ userProfile }) => {
   const [showHistory, setShowHistory] = useState(false);
   const router = useRouter();
+  const { clearProfile } = useProfile();
+
+  const handleRefillOnboarding = () => {
+    clearProfile();
+    router.push('/');
+  };
 
   const categories = [
     {
@@ -43,19 +50,30 @@ const ProfilePage = ({ userProfile }) => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        {/* Header */}
+        {/* Header with both buttons */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Your Profile</h1>
             <p className="text-gray-600">Based on your interactions and preferences</p>
           </div>
-          <button
-            onClick={() => router.push('/chat')}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg 
-                     hover:bg-blue-600 transition-colors"
-          >
-            Start New Chat
-          </button>
+          <div className="flex gap-4">
+            <button
+              onClick={() => router.push('/chat')}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg 
+                       hover:bg-blue-600 transition-colors flex items-center gap-2"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Start Chat
+            </button>
+            <button
+              onClick={handleRefillOnboarding}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg 
+                       hover:bg-gray-50 transition-colors flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refill Onboarding
+            </button>
+          </div>
         </div>
 
         {/* Last Session Summary - Show only if there's recent session */}

@@ -1,16 +1,19 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, User, Bot, BookOpen, X } from 'lucide-react';
-import { useRouter } from 'next/router';
 
-const ChatInterface = ({ userProfile, onProfileUpdate }) => {
+const ChatInterface = ({ userProfile, onProfileUpdate, router }) => {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionInsights, setSessionInsights] = useState([]);
   const [showEndDialog, setShowEndDialog] = useState(false);
   const messagesEndRef = useRef(null);
-  const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const suggestedQuestions = [
     "I've been reading a lot about personal development. What should I try next?",
@@ -77,22 +80,24 @@ const ChatInterface = ({ userProfile, onProfileUpdate }) => {
   };
 
   const confirmEndSession = () => {
-    // Update profile with insights gained
-    onProfileUpdate(prevProfile => ({
-      ...prevProfile,
-      sessionHistory: [
-        ...(prevProfile.sessionHistory || []),
-        {
-          date: new Date().toISOString(),
-          insights: sessionInsights,
-          messageCount: messages.length
-        }
-      ]
-    }));
-
-    // Navigate to profile page
+    if (sessionInsights.length > 0) {
+      onProfileUpdate(prev => ({
+        ...prev,
+        sessionHistory: [
+          ...(prev?.sessionHistory || []),
+          {
+            date: new Date().toISOString(),
+            insights: sessionInsights,
+          }
+        ]
+      }));
+    }
     router.push('/profile');
   };
+
+  if (!mounted) {
+    return null; // Return nothing during SSR
+  }
 
   return (
     <div className="relative flex flex-col h-[600px] w-full bg-white rounded-lg border border-gray-200">

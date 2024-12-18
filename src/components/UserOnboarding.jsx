@@ -1,13 +1,20 @@
 'use client';
 import { useState } from 'react';
 
-const UserOnboarding = ({ onComplete }) => {
+const UserOnboarding = ({ onComplete, initialData }) => {
   const [step, setStep] = useState(1);
-  const [userProfile, setUserProfile] = useState({
-    interests: [],
-    inspirations: [],
+  const defaultProfile = {
+    age: '',
+    gender: '',
     areas: [],
-    linkedinUrl: ''
+    inspirations: [],
+    linkedinUrl: '',
+    sessionHistory: []
+  };
+
+  const [userProfile, setUserProfile] = useState({
+    ...defaultProfile,
+    ...initialData
   });
 
   const areas = [
@@ -24,9 +31,58 @@ const UserOnboarding = ({ onComplete }) => {
     'Jeff Bezos', 'Kevin Hart', 'Brené Brown'
   ];
 
+  const genderOptions = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
+
   const renderStep = () => {
     switch(step) {
       case 1:
+        return (
+          <div className="space-y-6">
+            <div className="text-center max-w-2xl mx-auto">
+              <h2 className="text-3xl font-bold tracking-tight">Tell us about yourself</h2>
+              <p className="mt-2 text-lg text-gray-600">This helps us personalize your experience</p>
+            </div>
+            <div className="max-w-md mx-auto space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
+                <input
+                  type="number"
+                  value={userProfile.age}
+                  onChange={(e) => setUserProfile(prev => ({
+                    ...prev,
+                    age: e.target.value
+                  }))}
+                  className="w-full p-3 rounded-lg border border-gray-200 focus:border-blue-500 
+                           focus:ring-2 focus:ring-blue-200 outline-none"
+                  placeholder="Enter your age"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {genderOptions.map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => setUserProfile(prev => ({
+                        ...prev,
+                        gender: option
+                      }))}
+                      className={`p-3 rounded-lg border transition-all duration-200
+                        ${userProfile.gender === option
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-blue-200'
+                        }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 2:
         return (
           <div className="space-y-6">
             <div className="text-center max-w-2xl mx-auto">
@@ -58,7 +114,7 @@ const UserOnboarding = ({ onComplete }) => {
           </div>
         );
 
-      case 2:
+      case 3:
         return (
           <div className="space-y-6">
             <div className="text-center max-w-2xl mx-auto">
@@ -93,7 +149,7 @@ const UserOnboarding = ({ onComplete }) => {
           </div>
         );
 
-      case 3:
+      case 4:
         return (
           <div className="max-w-2xl mx-auto space-y-6">
             <div className="text-center">
@@ -124,7 +180,7 @@ const UserOnboarding = ({ onComplete }) => {
       <div className="max-w-2xl mx-auto mb-12">
         <div className="flex justify-between relative">
           <div className="absolute top-1/2 h-0.5 w-full bg-gray-200 -z-10"></div>
-          {[1, 2, 3].map((stepNumber) => (
+          {[1, 2, 3, 4].map((stepNumber) => (
             <div key={stepNumber} className="flex flex-col items-center gap-2">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center
                 transition-colors duration-200 font-medium
@@ -136,7 +192,7 @@ const UserOnboarding = ({ onComplete }) => {
               </div>
               <span className={`text-sm font-medium
                 ${step >= stepNumber ? 'text-blue-500' : 'text-gray-500'}`}>
-                {['Areas', 'Inspiration', 'Connect'][stepNumber - 1]}
+                {['About You', 'Areas', 'Inspiration', 'Connect'][stepNumber - 1]}
               </span>
             </div>
           ))}
@@ -160,7 +216,7 @@ const UserOnboarding = ({ onComplete }) => {
         </button>
         <button
           onClick={() => {
-            if (step === 3) {
+            if (step === 4) {
               onComplete(userProfile);
             } else {
               setStep(prev => prev + 1);
@@ -169,7 +225,7 @@ const UserOnboarding = ({ onComplete }) => {
           className="px-8 py-3 bg-blue-500 text-white rounded-lg 
                    hover:bg-blue-600 transition-colors duration-200"
         >
-          {step === 3 ? 'Complete' : 'Continue'}
+          {step === 4 ? 'View Profile' : 'Continue'}
         </button>
       </div>
     </div>

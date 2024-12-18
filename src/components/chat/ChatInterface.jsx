@@ -1,239 +1,134 @@
-'use client';
-import React, { useState, useEffect, useRef } from 'react';
-import { Send, User, Bot, BookOpen, X } from 'lucide-react';
+"use client";
 
-const ChatInterface = ({ userProfile, onProfileUpdate, router }) => {
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { ref, push, query, orderByChild, limitToLast, onValue } from 'firebase/database';
+import { database } from '../firebase/config.js';
+
+export default function ChatInterface({ userProfile }) {
+  const router = useRouter();
   const [messages, setMessages] = useState([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [sessionInsights, setSessionInsights] = useState([]);
-  const [showEndDialog, setShowEndDialog] = useState(false);
-  const messagesEndRef = useRef(null);
+  const [newMessage, setNewMessage] = useState('');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    return () => setMounted(false);
   }, []);
 
-  const suggestedQuestions = [
-    "I've been reading a lot about personal development. What should I try next?",
-    "Can you help me find books that match my career interests?",
-    "I want to improve my leadership skills. Where should I start?",
-    "What books would help me with my current challenges?",
-  ];
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const handleSubmit = async (e) => {
-    e?.preventDefault();
-    if (!inputValue.trim() || isLoading) return;
-
-    try {
-      setIsLoading(true);
-      setMessages(prev => [...prev, { role: 'user', content: inputValue }]);
-      setInputValue('');
-
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: inputValue,
-          userProfile,
-          chatHistory: messages
-        })
-      });
-
-      if (!response.ok) throw new Error('Failed to get response');
-      
-      const data = await response.json();
-      
-      // Track insights from this message
-      if (data.insights) {
-        setSessionInsights(prev => [...prev, ...data.insights]);
+  // Send a new message
+  const sendMessage = async (message) => {
+    const chatRef = ref(database, 'chats');
+    const newMessage = {
+      userId: userProfile.id,
+      message,
+      timestamp: Date.now(),
+      userProfile: {
+        name: userProfile.name,
+        role: userProfile.role,
       }
-
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: data.content,
-        prefills: data.suggestedQuestions 
-      }]);
-
+    };
+    
+    try {
+      await push(chatRef, newMessage);
+      return true;
     } catch (error) {
-      console.error('Error:', error);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.'
-      }]);
-    } finally {
-      setIsLoading(false);
+      console.error('Error sending message:', error);
+      return false;
     }
   };
 
-  const handleEndSession = () => {
-    setShowEndDialog(true);
+  // Subscribe to real-time updates
+  useEffect(() => {
+    if (!mounted) return;
+
+    const chatRef = ref(database, 'chats');
+    const messagesQuery = query(
+      chatRef,
+      orderByChild('timestamp'),
+      limitToLast(50)
+    );
+
+    const unsubscribe = onValue(messagesQuery, (snapshot) => {
+      const messagesList = [];
+      snapshot.forEach((childSnapshot) => {
+        messagesList.push({
+          id: childSnapshot.key,
+          ...childSnapshot.val()
+        });
+      });
+      setMessages(messagesList.sort((a, b) => a.timestamp - b.timestamp));
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [mounted]);
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim()) return;
+
+    const success = await sendMessage(newMessage);
+    if (success) {
+      setNewMessage('');
+    }
   };
 
-  const confirmEndSession = () => {
-    if (sessionInsights.length > 0) {
-      onProfileUpdate(prev => ({
-        ...prev,
-        sessionHistory: [
-          ...(prev?.sessionHistory || []),
-          {
-            date: new Date().toISOString(),
-            insights: sessionInsights,
-          }
-        ]
-      }));
+  const confirmEndSession = async () => {
+    if (window.confirm('Are you sure you want to end this session?')) {
+      // Add any cleanup or session ending logic here
+      router.push('/profile');
     }
-    router.push('/profile');
   };
 
   if (!mounted) {
-    return null; // Return nothing during SSR
+    return null; // or a loading spinner
   }
 
   return (
-    <div className="relative flex flex-col h-[600px] w-full bg-white rounded-lg border border-gray-200">
-      {/* Header */}
-      <div className="flex justify-between items-center px-4 py-3 border-b border-gray-200">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Chat Assistant</h2>
-          <p className="text-sm text-gray-500">Ask me anything about books and reading</p>
-        </div>
+    <div className="flex flex-col h-[600px] border rounded-lg">
+      <div className="p-4 border-b flex justify-between items-center">
+        <h2 className="text-lg font-semibold">Chat Session</h2>
         <button
-          onClick={handleEndSession}
-          className="px-3 py-1.5 text-sm text-gray-600 hover:text-red-500 
-                   border border-gray-200 rounded-md hover:border-red-200 
-                   transition-colors duration-200 flex items-center gap-2"
+          onClick={confirmEndSession}
+          className="px-4 py-2 text-red-600 hover:text-red-700"
         >
-          <X className="w-4 h-4" />
           End Session
         </button>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        {messages.map((message, idx) => (
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((msg) => (
           <div
-            key={idx}
-            className={`flex items-start gap-2 ${
-              message.role === 'user' ? 'flex-row-reverse' : ''
+            key={msg.id}
+            className={`p-3 rounded-lg ${
+              msg.userId === userProfile.id
+                ? 'bg-blue-500 text-white ml-auto'
+                : 'bg-gray-200 mr-auto'
             }`}
           >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center
-              ${message.role === 'user' ? 'bg-blue-100' : 'bg-gray-100'}`}>
-              {message.role === 'user' ? (
-                <User className="w-4 h-4 text-blue-600" />
-              ) : (
-                <Bot className="w-4 h-4 text-gray-600" />
-              )}
-            </div>
-
-            <div className={`flex flex-col max-w-[75%] ${
-              message.role === 'user' ? 'items-end' : 'items-start'
-            }`}>
-              <div className={`rounded-lg px-3 py-2 ${
-                message.role === 'user'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-900'
-              }`}>
-                <p className="text-sm">{message.content}</p>
-              </div>
-
-              {message.prefills && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {message.prefills.map((prefill, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => {
-                        setInputValue(prefill);
-                        handleSubmit();
-                      }}
-                      className="px-3 py-1 text-xs bg-white text-gray-600 
-                               rounded-full hover:bg-gray-50 border border-gray-200"
-                    >
-                      {prefill}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            {msg.message}
           </div>
         ))}
-        {isLoading && (
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-              <Bot className="w-4 h-4 text-gray-600" />
-            </div>
-            <div className="px-3 py-2 bg-gray-100 rounded-lg">
-              <div className="flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce"></div>
-                <div className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{animationDelay: "0.2s"}}></div>
-                <div className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{animationDelay: "0.4s"}}></div>
-              </div>
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="p-3 border-t border-gray-200">
-        <form onSubmit={handleSubmit} className="flex gap-2">
+      <form onSubmit={handleSendMessage} className="p-4 border-t">
+        <div className="flex gap-2">
           <input
             type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask me anything..."
-            className="flex-1 px-3 py-2 text-sm border rounded-md focus:outline-none 
-                     focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            className="flex-1 p-2 border rounded"
+            placeholder="Type your message..."
           />
           <button
             type="submit"
-            disabled={!inputValue.trim() || isLoading}
-            className="px-3 py-2 bg-blue-500 text-white rounded-md 
-                     hover:bg-blue-600 disabled:bg-gray-300 
-                     disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 bg-blue-500 text-white rounded"
           >
-            <Send className="w-4 h-4" />
+            Send
           </button>
-        </form>
-      </div>
-
-      {/* End Session Dialog */}
-      {showEndDialog && (
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-2">End Chat Session?</h3>
-            <p className="text-gray-600 mb-4">
-              Your profile will be updated with insights from this conversation.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowEndDialog(false)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmEndSession}
-                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-              >
-                Confirm & View Profile
-              </button>
-            </div>
-          </div>
         </div>
-      )}
+      </form>
     </div>
   );
-};
-
-export default ChatInterface;
+}

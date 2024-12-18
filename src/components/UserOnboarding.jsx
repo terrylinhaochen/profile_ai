@@ -1,7 +1,7 @@
-// src/components/UserOnboardingFlow.jsx
+'use client';
 import { useState } from 'react';
 
-const UserOnboardingFlow = ({ onComplete }) => {
+const UserOnboarding = ({ onComplete }) => {
   const [step, setStep] = useState(1);
   const [userProfile, setUserProfile] = useState({
     interests: [],
@@ -176,4 +176,4 @@ const UserOnboardingFlow = ({ onComplete }) => {
   );
 };
 
-export default UserOnboardingFlow;
+export default UserOnboarding;

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ref, push, query, orderByChild, limitToLast, onValue } from 'firebase/database';
-import { database } from '../firebase/config.js';
+import { database } from '../../firebase/config';
 
 export default function ChatInterface({ userProfile }) {
   const router = useRouter();

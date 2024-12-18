@@ -1,6 +1,9 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
+import { useProfile } from '../../app/context/ProfileContext';
+import { auth } from '../../lib/firebase';
+import { getRecommendations, saveRecommendations } from '../../services/recommendations';
 import TopOfMindSection from './TopOfMindSection';
 import CareerGrowthSection from './CareerGrowthSection';
 import PersonalInterestsSection from './PersonalInterestsSection';
@@ -14,8 +17,19 @@ const RecommendationsPage = ({ userProfile }) => {
   const fetchRecommendations = async () => {
     try {
       setLoading(true);
-      console.log('Fetching recommendations for profile:', userProfile);
+      setError(null);
 
+      if (auth.currentUser) {
+        // Try to get existing recommendations first
+        const existingRecommendations = await getRecommendations(auth.currentUser.uid);
+        
+        if (existingRecommendations) {
+          setRecommendations(existingRecommendations);
+          return;
+        }
+      }
+
+      // If no existing recommendations or not logged in, fetch new ones
       const response = await fetch('/api/recommendations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -23,38 +37,39 @@ const RecommendationsPage = ({ userProfile }) => {
       });
       
       const data = await response.json();
-      console.log('API Response:', data);
-
+      
       if (data.error) {
-        console.error('API Error:', data.error, 'Details:', data.details);
-        setError(`Error: ${data.error}${data.details ? ` - ${data.details}` : ''}`);
-        return;
+        throw new Error(data.error);
+      }
+
+      // Save recommendations if user is logged in
+      if (auth.currentUser) {
+        await saveRecommendations(auth.currentUser.uid, data);
       }
 
       setRecommendations(data);
-      setError(null);
     } catch (error) {
-      console.error('Fetch error:', error);
-      setError('Failed to fetch recommendations');
+      console.error('Error fetching recommendations:', error);
+      setError(error.message || 'Failed to fetch recommendations');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (userProfile) {
-      fetchRecommendations();
-    }
+    fetchRecommendations();
   }, [userProfile]);
-
-  console.log('Rendering with:', { loading, recommendations, userProfile });
 
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Your Reading Recommendations</h1>
-          <p className="text-gray-600">Curated books based on your profile and interests</p>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Your Reading Recommendations
+          </h1>
+          <p className="text-gray-600">
+            Curated books based on your profile and interests
+          </p>
         </div>
         <button
           onClick={fetchRecommendations}

@@ -1,8 +1,25 @@
 'use client';
 import { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { useProfile } from '../../context/ProfileContext';
+import { useRouter } from 'next/navigation';
+import { FcGoogle } from 'react-icons/fc';
+import { HiMail } from 'react-icons/hi';
 
-const UserOnboarding = ({ onComplete, initialData }) => {
+const UserOnboarding = () => {
   const [step, setStep] = useState(1);
+  const [showAuth, setShowAuth] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [emailCredentials, setEmailCredentials] = useState({
+    email: '',
+    password: ''
+  });
+
+  const { signInWithGoogle, signInWithEmail, createUserWithEmail } = useAuth();
+  const { updateProfile } = useProfile();
+  const router = useRouter();
+
   const defaultProfile = {
     age: '',
     gender: '',
@@ -12,10 +29,7 @@ const UserOnboarding = ({ onComplete, initialData }) => {
     sessionHistory: []
   };
 
-  const [userProfile, setUserProfile] = useState({
-    ...defaultProfile,
-    ...initialData
-  });
+  const [userProfile, setUserProfile] = useState(defaultProfile);
 
   const areas = [
     'Emotions', 'Motivation', 'Nutrition',
@@ -174,8 +188,136 @@ const UserOnboarding = ({ onComplete, initialData }) => {
     }
   };
 
+  const handleAuthAndSaveProfile = async (authMethod, credentials = null) => {
+    try {
+      setAuthError('');
+      let user;
+
+      // Handle different auth methods
+      if (authMethod === 'google') {
+        user = await signInWithGoogle();
+      } else if (authMethod === 'email') {
+        try {
+          // Try to sign in first
+          user = await signInWithEmail(credentials.email, credentials.password);
+        } catch (error) {
+          // If sign in fails, try to create new account
+          if (error.code === 'auth/user-not-found') {
+            user = await createUserWithEmail(credentials.email, credentials.password);
+          } else {
+            throw error;
+          }
+        }
+      }
+
+      if (user) {
+        const profileData = {
+          ...userProfile,
+          reading: `Age: ${userProfile.age}, Areas: ${userProfile.areas.join(', ')}`,
+          interests: userProfile.areas.join(', '),
+          motivation: `Inspired by: ${userProfile.inspirations.join(', ')}`,
+          personal: `Gender: ${userProfile.gender}, Age: ${userProfile.age}`,
+          preferences: userProfile.areas.join(', '),
+          userId: user.uid,
+          createdAt: new Date().toISOString()
+        };
+
+        await updateProfile(profileData);
+        router.push('/profile');
+      }
+    } catch (error) {
+      console.error('Auth error:', error);
+      setAuthError(error.message);
+    }
+  };
+
+  const renderEmailForm = () => (
+    <div className="space-y-4">
+      <input
+        type="email"
+        placeholder="Email"
+        value={emailCredentials.email}
+        onChange={(e) => setEmailCredentials(prev => ({
+          ...prev,
+          email: e.target.value
+        }))}
+        className="w-full p-3 border rounded-lg"
+      />
+      <input
+        type="password"
+        placeholder="Password"
+        value={emailCredentials.password}
+        onChange={(e) => setEmailCredentials(prev => ({
+          ...prev,
+          password: e.target.value
+        }))}
+        className="w-full p-3 border rounded-lg"
+      />
+      <button
+        onClick={() => handleAuthAndSaveProfile('email', emailCredentials)}
+        className="w-full p-4 bg-blue-500 text-white rounded-lg 
+                 hover:bg-blue-600 transition-colors"
+      >
+        Continue
+      </button>
+    </div>
+  );
+
+  const renderAuth = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4">
+        <h2 className="text-2xl font-bold mb-4 text-center">Sign in to save your profile</h2>
+        
+        {authError && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
+            {authError}
+          </div>
+        )}
+
+        <div className="space-y-4">
+          {showEmailForm ? (
+            renderEmailForm()
+          ) : (
+            <>
+              <button
+                onClick={() => handleAuthAndSaveProfile('google')}
+                className="w-full p-4 flex items-center justify-center gap-3 
+                         border border-gray-200 rounded-xl hover:bg-gray-50 
+                         transition-colors duration-200"
+              >
+                <FcGoogle className="w-6 h-6" />
+                Continue with Google
+              </button>
+              <button
+                onClick={() => setShowEmailForm(true)}
+                className="w-full p-4 flex items-center justify-center gap-3 
+                         bg-blue-500 text-white rounded-xl 
+                         hover:bg-blue-600 transition-colors duration-200"
+              >
+                <HiMail className="w-6 h-6" />
+                Continue with Email
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => {
+              setShowAuth(false);
+              setShowEmailForm(false);
+              setAuthError('');
+            }}
+            className="w-full p-4 text-gray-500 hover:text-gray-700"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="max-w-5xl mx-auto">
+      {showAuth && renderAuth()}
+      
       {/* Progress bar */}
       <div className="max-w-2xl mx-auto mb-12">
         <div className="flex justify-between relative">
@@ -217,7 +359,7 @@ const UserOnboarding = ({ onComplete, initialData }) => {
         <button
           onClick={() => {
             if (step === 4) {
-              onComplete(userProfile);
+              setShowAuth(true); // Show auth modal instead of completing directly
             } else {
               setStep(prev => prev + 1);
             }

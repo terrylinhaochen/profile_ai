@@ -1,80 +1,71 @@
 'use client';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { 
-  createUserWithEmailAndPassword,
+  onAuthStateChanged, 
   signInWithEmailAndPassword,
-  signInWithPopup,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
   GoogleAuthProvider,
-  signOut,
-  onAuthStateChanged
+  signInWithPopup
 } from 'firebase/auth';
-import { auth } from '../firebase/config.js';
+import { auth } from '../firebase/config';
 
-const AuthContext = createContext({});
+const AuthContext = createContext();
 
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
-
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Sign up with email and password
-  const signUp = async (email, password) => {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      return userCredential.user;
-    } catch (error) {
-      throw new Error(error.message);
-    }
-  };
-
-  // Sign in with email and password
-  const signIn = async (email, password) => {
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      return userCredential.user;
-    } catch (error) {
-      throw new Error(error.message);
-    }
-  };
-
-  // Sign in with Google
-  const signInWithGoogle = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      return result.user;
-    } catch (error) {
-      throw new Error(error.message);
-    }
-  };
-
-  // Sign out
-  const logout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      throw new Error(error.message);
-    }
-  };
-
-  // Listen to auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => unsubscribe();
   }, []);
+
+  const signIn = async (email, password) => {
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      return result.user;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const signUp = async (email, password) => {
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      return result.user;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      return result.user;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await firebaseSignOut(auth);
+    } catch (error) {
+      throw error;
+    }
+  };
 
   const value = {
     user,
     loading,
-    signUp,
     signIn,
+    signUp,
     signInWithGoogle,
     logout
   };
@@ -84,4 +75,8 @@ export const AuthProvider = ({ children }) => {
       {!loading && children}
     </AuthContext.Provider>
   );
-};
+}
+
+export function useAuth() {
+  return useContext(AuthContext);
+}

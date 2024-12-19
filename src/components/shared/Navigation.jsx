@@ -2,26 +2,18 @@
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { MessageSquare, User, BookOpen } from 'lucide-react';
 
 const Navigation = () => {
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  const handleSignOut = async () => {
-    try {
-      await logout();
-      router.push('/');
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
-
   return (
     <nav className="bg-white shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold text-gray-900">
+            <Link href="/" className="text-xl font-bold">
               Profile AI
             </Link>
           </div>
@@ -29,25 +21,46 @@ const Navigation = () => {
           <div className="flex items-center space-x-4">
             {user ? (
               <>
-                <Link href="/profile" className="text-gray-600 hover:text-gray-900">
-                  Profile
+                <Link 
+                  href="/chat" 
+                  className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                  <span>Chat</span>
                 </Link>
-                <Link href="/recommendations" className="text-gray-600 hover:text-gray-900">
-                  Recommendations
+                <Link 
+                  href="/recommendations" 
+                  className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
+                >
+                  <BookOpen className="w-5 h-5" />
+                  <span>Recommendations</span>
+                </Link>
+                <Link 
+                  href="/profile" 
+                  className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
+                >
+                  <User className="w-5 h-5" />
+                  <span>Profile</span>
                 </Link>
                 <button
-                  onClick={handleSignOut}
-                  className="text-gray-600 hover:text-gray-900"
+                  onClick={() => logout()}
+                  className="px-4 py-2 text-red-600 hover:text-red-700"
                 >
                   Sign Out
                 </button>
               </>
             ) : (
               <>
-                <Link href="/auth/signin" className="text-gray-600 hover:text-gray-900">
+                <Link 
+                  href="/signin"
+                  className="text-gray-700 hover:text-gray-900"
+                >
                   Sign In
                 </Link>
-                <Link href="/auth/signup" className="text-gray-600 hover:text-gray-900">
+                <Link 
+                  href="/signup"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                >
                   Sign Up
                 </Link>
               </>

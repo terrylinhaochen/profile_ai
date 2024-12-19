@@ -1,6 +1,6 @@
 'use client';
-import { createContext, useContext, useState } from 'react';
-import { doc, setDoc } from 'firebase/firestore';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from './AuthContext';
 
@@ -9,6 +9,21 @@ const ProfileContext = createContext();
 export function ProfileProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const { user } = useAuth();
+
+  // Add effect to fetch profile when user is authenticated
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (user) {
+        const docRef = doc(db, 'profiles', user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setProfile(docSnap.data());
+        }
+      }
+    };
+
+    fetchProfile();
+  }, [user]);
 
   const updateProfile = async (newProfile) => {
     try {
@@ -25,12 +40,8 @@ export function ProfileProvider({ children }) {
     }
   };
 
-  const clearProfile = () => {
-    setProfile(null);
-  };
-
   return (
-    <ProfileContext.Provider value={{ profile, updateProfile, clearProfile }}>
+    <ProfileContext.Provider value={{ profile, updateProfile }}>
       {children}
     </ProfileContext.Provider>
   );

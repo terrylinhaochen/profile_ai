@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useProfile } from '../../context/ProfileContext';
 import { useRouter } from 'next/navigation';
@@ -16,9 +16,9 @@ const UserOnboarding = () => {
     password: ''
   });
 
-  const { signInWithGoogle, signInWithEmail, createUserWithEmail } = useAuth();
-  const { updateProfile } = useProfile();
   const router = useRouter();
+  const { user, signInWithGoogle, signInWithEmail, createUserWithEmail } = useAuth();
+  const { profile, updateProfile } = useProfile();
 
   const defaultProfile = {
     age: '',
@@ -46,6 +46,12 @@ const UserOnboarding = () => {
   ];
 
   const genderOptions = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
+
+  useEffect(() => {
+    if (user && profile) {
+      router.push('/profile');
+    }
+  }, [user, profile, router]);
 
   const renderStep = () => {
     switch(step) {
@@ -191,26 +197,23 @@ const UserOnboarding = () => {
   const handleAuthAndSaveProfile = async (authMethod, credentials = null) => {
     try {
       setAuthError('');
-      let user;
+      let authUser;
 
-      // Handle different auth methods
       if (authMethod === 'google') {
-        user = await signInWithGoogle();
+        authUser = await signInWithGoogle();
       } else if (authMethod === 'email') {
         try {
-          // Try to sign in first
-          user = await signInWithEmail(credentials.email, credentials.password);
+          authUser = await signInWithEmail(credentials.email, credentials.password);
         } catch (error) {
-          // If sign in fails, try to create new account
           if (error.code === 'auth/user-not-found') {
-            user = await createUserWithEmail(credentials.email, credentials.password);
+            authUser = await createUserWithEmail(credentials.email, credentials.password);
           } else {
             throw error;
           }
         }
       }
 
-      if (user) {
+      if (authUser) {
         const profileData = {
           ...userProfile,
           reading: `Age: ${userProfile.age}, Areas: ${userProfile.areas.join(', ')}`,
@@ -218,7 +221,7 @@ const UserOnboarding = () => {
           motivation: `Inspired by: ${userProfile.inspirations.join(', ')}`,
           personal: `Gender: ${userProfile.gender}, Age: ${userProfile.age}`,
           preferences: userProfile.areas.join(', '),
-          userId: user.uid,
+          userId: authUser.uid,
           createdAt: new Date().toISOString()
         };
 
@@ -313,6 +316,10 @@ const UserOnboarding = () => {
       </div>
     </div>
   );
+
+  if (user && profile) {
+    return null;
+  }
 
   return (
     <div className="max-w-5xl mx-auto">

@@ -1,18 +1,63 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { useProfile } from '../../app/context/ProfileContext';
-import { auth } from '../../lib/firebase';
-import { getRecommendations, saveRecommendations } from '../../services/recommendations';
+import { useProfile } from '../../context/ProfileContext';
+import { auth } from '../../firebase/config';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../../firebase/config';
 import TopOfMindSection from './TopOfMindSection';
 import CareerGrowthSection from './CareerGrowthSection';
 import PersonalInterestsSection from './PersonalInterestsSection';
 import LoadingSpinner from '../shared/LoadingSpinner';
 
-const RecommendationsPage = ({ userProfile }) => {
+// Sample recommendations (move this to a separate file if you prefer)
+const sampleRecommendations = {
+  topOfMind: [
+    {
+      title: "Deep Work",
+      author: "Cal Newport",
+      description: "Rules for Focused Success in a Distracted World",
+      relevance: "Helps improve concentration and productivity",
+      keyTakeaways: [
+        "Eliminate distractions to focus deeply",
+        "Schedule deep work sessions",
+        "Build routines and rituals"
+      ]
+    }
+  ],
+  careerGrowth: [
+    {
+      title: "Atomic Habits",
+      author: "James Clear",
+      description: "An Easy & Proven Way to Build Good Habits & Break Bad Ones",
+      relevance: "Perfect for developing professional habits",
+      keyTakeaways: [
+        "Make small changes for big results",
+        "Focus on systems over goals",
+        "Use habit stacking"
+      ]
+    }
+  ],
+  personalInterests: [
+    {
+      title: "The Psychology of Money",
+      author: "Morgan Housel",
+      description: "Timeless lessons on wealth, greed, and happiness",
+      relevance: "Understanding personal finance and behavior",
+      keyTakeaways: [
+        "Long-term thinking is key",
+        "Luck and risk are important factors",
+        "Manage your psychology around money"
+      ]
+    }
+  ]
+};
+
+const RecommendationsPage = () => {
   const [recommendations, setRecommendations] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { profile } = useProfile();
 
   const fetchRecommendations = async () => {
     try {
@@ -20,34 +65,22 @@ const RecommendationsPage = ({ userProfile }) => {
       setError(null);
 
       if (auth.currentUser) {
-        // Try to get existing recommendations first
-        const existingRecommendations = await getRecommendations(auth.currentUser.uid);
+        // Try to get existing recommendations from Firestore
+        const docRef = doc(db, 'recommendations', auth.currentUser.uid);
+        const docSnap = await getDoc(docRef);
         
-        if (existingRecommendations) {
-          setRecommendations(existingRecommendations);
+        if (docSnap.exists()) {
+          setRecommendations(docSnap.data());
           return;
         }
+        
+        // If no existing recommendations, save and use sample data
+        await setDoc(docRef, sampleRecommendations);
+        setRecommendations(sampleRecommendations);
+      } else {
+        // If not logged in, just use sample data
+        setRecommendations(sampleRecommendations);
       }
-
-      // If no existing recommendations or not logged in, fetch new ones
-      const response = await fetch('/api/recommendations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userProfile }),
-      });
-      
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      // Save recommendations if user is logged in
-      if (auth.currentUser) {
-        await saveRecommendations(auth.currentUser.uid, data);
-      }
-
-      setRecommendations(data);
     } catch (error) {
       console.error('Error fetching recommendations:', error);
       setError(error.message || 'Failed to fetch recommendations');
@@ -58,7 +91,7 @@ const RecommendationsPage = ({ userProfile }) => {
 
   useEffect(() => {
     fetchRecommendations();
-  }, [userProfile]);
+  }, [profile]);
 
   return (
     <div className="space-y-8">

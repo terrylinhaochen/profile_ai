@@ -4,26 +4,42 @@ import {
   signInWithPopup, 
   GoogleAuthProvider,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword
+  createUserWithEmailAndPassword,
+  onAuthStateChanged
 } from 'firebase/auth';
 import { auth } from '../firebase/config';
+import { useRouter } from 'next/navigation';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
+      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
-  const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
+  const signOut = async () => {
     try {
+      await firebaseSignOut(auth);
+      setUser(null);
+      router.push('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
+      router.push('/profile');
       return result.user;
     } catch (error) {
       console.error('Google sign-in error:', error);
@@ -34,6 +50,7 @@ export function AuthProvider({ children }) {
   const signInWithEmail = async (email, password) => {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
+      router.push('/profile');
       return result.user;
     } catch (error) {
       console.error('Email sign-in error:', error);
@@ -44,6 +61,7 @@ export function AuthProvider({ children }) {
   const createUserWithEmail = async (email, password) => {
     try {
       const result = await createUserWithEmailAndPassword(auth, email, password);
+      router.push('/profile');
       return result.user;
     } catch (error) {
       console.error('Email sign-up error:', error);
@@ -54,11 +72,13 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{ 
       user, 
+      loading,
       signInWithGoogle, 
       signInWithEmail,
-      createUserWithEmail
+      createUserWithEmail,
+      signOut
     }}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 }

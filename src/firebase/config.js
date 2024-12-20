@@ -11,17 +11,10 @@ const firebaseConfig = {
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
-  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
+  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-
-// Initialize services
-const auth = getAuth(app);
-const db = getFirestore(app);
-const rtdb = getDatabase(app);
-
-// Export services
-export { auth, db, rtdb as database };
-export default app;
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const database = getDatabase(app);

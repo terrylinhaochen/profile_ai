@@ -1,153 +1,94 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Book, Brain, Target, User, History, MessageSquare, RefreshCw } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Book, Brain, Target, User } from 'lucide-react';
 import { useProfile } from '../../context/ProfileContext';
+import { ref, set, onValue } from 'firebase/database';
+import { database } from '../../firebase/config';
 
-const ProfilePage = ({ userProfile }) => {
-  const [showHistory, setShowHistory] = useState(false);
-  const router = useRouter();
-  const { clearProfile } = useProfile();
+const ProfilePage = () => {
+  const { user } = useAuth();
+  const { profile } = useProfile();
+  const [profileData, setProfileData] = useState(null);
 
-  const handleRefillOnboarding = () => {
-    clearProfile();
-    router.push('/');
-  };
+  useEffect(() => {
+    if (user) {
+      const profileRef = ref(database, `profiles/${user.uid}`);
+      
+      // Listen for profile updates
+      const unsubscribe = onValue(profileRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          setProfileData(data);
+        }
+      });
+
+      return () => unsubscribe();
+    }
+  }, [user]);
 
   const categories = [
     {
+      title: "Personal Context",
+      icon: <User className="w-5 h-5" />,
+      content: profileData?.personal || "No personal information available",
+      color: "purple",
+      span: "col-span-full" // Full width
+    },
+    {
       title: "Reading Profile & Preferences",
       icon: <Book className="w-5 h-5" />,
-      content: userProfile?.reading || "No reading profile information yet",
+      content: profileData?.reading || "No reading profile information available",
       color: "blue",
-      span: "col-span-2"
+      span: "col-span-full" // Full width
     },
     {
       title: "Interests & Expertise",
       icon: <Brain className="w-5 h-5" />,
-      content: userProfile?.interests || "No interests recorded yet",
-      color: "purple",
-      span: "col-span-1"
+      content: profileData?.interests || "No interests recorded yet",
+      color: "green",
+      span: "col-span-full" // Full width
     },
     {
       title: "Motivation & Goals",
       icon: <Target className="w-5 h-5" />,
-      content: userProfile?.motivation || "No motivation information yet",
-      color: "green",
-      span: "col-span-1"
-    },
-    {
-      title: "Personal Context",
-      icon: <User className="w-5 h-5" />,
-      content: userProfile?.personal || "No personal context added yet",
+      content: profileData?.motivation || "No motivation information yet",
       color: "orange",
-      span: "col-span-2"
+      span: "col-span-full" // Full width
     }
   ];
 
+  if (!profileData) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4">
-        {/* Header with both buttons */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Your Profile</h1>
-            <p className="text-gray-600">Based on your interactions and preferences</p>
-          </div>
-          <div className="flex gap-4">
-            <button
-              onClick={() => router.push('/chat')}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg 
-                       hover:bg-blue-600 transition-colors flex items-center gap-2"
-            >
-              <MessageSquare className="w-4 h-4" />
-              Start Chat
-            </button>
-            <button
-              onClick={handleRefillOnboarding}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg 
-                       hover:bg-gray-50 transition-colors flex items-center gap-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Refill Onboarding
-            </button>
-          </div>
-        </div>
-
-        {/* Last Session Summary */}
-        {userProfile?.sessionHistory?.length > 0 && (
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-8">
-            <h2 className="text-sm font-medium text-blue-800 mb-2">Last Session Insights</h2>
-            <div className="text-sm text-blue-600">
-              {userProfile.sessionHistory[userProfile.sessionHistory.length - 1].insights.map((insight, idx) => (
-                <p key={idx}>• {insight}</p>
-              ))}
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-gray-900">Your Profile</h1>
+      
+      <div className="grid grid-cols-1 gap-6"> {/* Changed to single column */}
+        {categories.map((category) => (
+          <div
+            key={category.title}
+            className={`bg-white rounded-lg border border-gray-200 p-6 
+                     hover:shadow-md transition-shadow ${category.span}`}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`p-2 rounded-lg bg-${category.color}-50 
+                            text-${category.color}-500`}>
+                {category.icon}
+              </div>
+              <h2 className="font-medium text-lg text-gray-900">{category.title}</h2>
+            </div>
+            <div className="text-gray-600 text-base leading-relaxed whitespace-pre-wrap">
+              {category.content}
             </div>
           </div>
-        )}
-
-        {/* Modified Profile Categories Grid */}
-        <div className="grid grid-cols-2 gap-6">
-          {categories.map((category) => (
-            <div
-              key={category.title}
-              className={`bg-white rounded-lg border border-gray-200 p-6 
-                       hover:shadow-md transition-shadow ${category.span}`}
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className={`p-2 rounded-lg bg-${category.color}-50 
-                              text-${category.color}-500`}>
-                  {category.icon}
-                </div>
-                <h2 className="font-medium text-lg text-gray-900">{category.title}</h2>
-              </div>
-              <div className="text-gray-600 text-base leading-relaxed whitespace-pre-wrap">
-                {category.content}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Session History Toggle */}
-        {userProfile?.sessionHistory?.length > 0 && (
-          <div className="mt-8">
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="text-sm text-gray-600 hover:text-gray-900 
-                       flex items-center gap-2"
-            >
-              <History className="w-4 h-4" />
-              {showHistory ? 'Hide History' : 'Show History'}
-            </button>
-
-            {/* Session History */}
-            {showHistory && (
-              <div className="mt-4 space-y-4">
-                {userProfile.sessionHistory.map((session, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-white rounded-lg border border-gray-200 p-4"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-sm font-medium text-gray-900">
-                        Session {userProfile.sessionHistory.length - idx}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {new Date(session.date).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {session.insights.map((insight, i) => (
-                        <p key={i} className="mb-1">• {insight}</p>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        ))}
       </div>
     </div>
   );

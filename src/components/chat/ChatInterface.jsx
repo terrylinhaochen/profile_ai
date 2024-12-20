@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ref, push, query, orderByChild, limitToLast, onValue } from 'firebase/database';
 import { database } from '../../firebase/config';
@@ -86,7 +86,7 @@ export default function ChatInterface({ userProfile }) {
   }
 
   return (
-    <div className="flex flex-col h-[600px] border rounded-lg">
+    <div className="flex flex-col h-[calc(100vh-4rem)] w-full border rounded-lg">
       <div className="p-4 border-b flex justify-between items-center">
         <h2 className="text-lg font-semibold">Chat Session</h2>
         <button

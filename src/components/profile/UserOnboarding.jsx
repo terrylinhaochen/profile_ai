@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { FcGoogle } from 'react-icons/fc';
 import { HiMail } from 'react-icons/hi';
 import { processOnboardingData } from '../../utils/profileProcessor';
+import { ref, set } from 'firebase/database';
+import { database } from '../../firebase/config';
 
 const UserOnboarding = () => {
   const [step, setStep] = useState(1);
@@ -219,6 +221,9 @@ const UserOnboarding = () => {
       }
 
       if (authUser) {
+        // Wait for a short delay to ensure Firebase auth state is updated
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
         const profileData = {
           ...userProfile,
           reading: `Age: ${userProfile.age}, Areas: ${userProfile.areas.join(', ')}`,
@@ -230,7 +235,13 @@ const UserOnboarding = () => {
           createdAt: new Date().toISOString()
         };
 
+        // Save directly to Firebase Realtime Database
+        const profileRef = ref(database, `profiles/${authUser.uid}`);
+        await set(profileRef, profileData);
+
+        // Update local profile state
         await updateProfile(profileData);
+        
         router.push('/profile');
       }
     } catch (error) {
@@ -323,14 +334,15 @@ const UserOnboarding = () => {
   );
 
   const handleFinalStep = async () => {
+    console.log('handleFinalStep called, user:', user);
+
     if (!user) {
       console.log('No user, showing auth modal');
       setShowAuth(true);
     } else {
       console.log('User exists, processing and saving profile');
       try {
-        // Add loading state if needed
-        setAuthError(''); // Clear any previous errors
+        setAuthError('');
         
         // Process the profile data through LLM
         const processedProfile = await processOnboardingData(userProfile);
@@ -342,10 +354,20 @@ const UserOnboarding = () => {
           createdAt: new Date().toISOString()
         };
 
+        // Save to Realtime Database
+        const profileRef = ref(database, `profiles/${user.uid}`);
+        await set(profileRef, profileData);
+
+        // Update local profile state
         await updateProfile(profileData);
-        console.log('Profile updated successfully');
-        
-        window.location.href = '/profile';
+
+        // Use both router.push and window.location as fallback
+        try {
+          await router.push('/profile');
+        } catch (error) {
+          console.error('Router push failed, using window.location:', error);
+          window.location.href = '/profile';
+        }
       } catch (error) {
         console.error('Error saving profile:', error);
         setAuthError(error.message || 'Error processing profile');

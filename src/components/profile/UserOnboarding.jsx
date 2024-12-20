@@ -28,7 +28,7 @@ const UserOnboarding = () => {
     gender: '',
     areas: [],
     inspirations: [],
-    linkedinUrl: '',
+    textContent: '',
     sessionHistory: []
   };
 
@@ -56,12 +56,17 @@ const UserOnboarding = () => {
     
     if (user && profile) {
       console.log('Attempting to redirect to /profile');
-      router.push('/profile').catch(console.error);
+      try {
+        router.push('/profile');
+      } catch (error) {
+        console.error('Router navigation failed:', error);
+        window.location.href = '/profile';
+      }
     }
   }, [user, profile, router]);
 
   const renderStep = () => {
-    switch(step) {
+    switch (step) {
       case 1:
         return (
           <div className="space-y-6">
@@ -109,37 +114,37 @@ const UserOnboarding = () => {
           </div>
         );
 
-      case 2:
-        return (
-          <div className="space-y-6">
-            <div className="text-center max-w-2xl mx-auto">
-              <h2 className="text-3xl font-bold tracking-tight">Choose areas you'd like to elevate</h2>
-              <p className="mt-2 text-lg text-gray-600">The choice won't limit your experience</p>
+        case 2:
+          return (
+            <div className="space-y-6">
+              <div className="text-center max-w-2xl mx-auto">
+                <h2 className="text-3xl font-bold tracking-tight">Choose areas you'd like to elevate</h2>
+                <p className="mt-2 text-lg text-gray-600">The choice won't limit your experience</p>
+              </div>
+              <div className="grid grid-cols-3 gap-4 mt-8">
+                {areas.map((area) => (
+                  <button
+                    key={area}
+                    onClick={() => {
+                      setUserProfile(prev => ({
+                        ...prev,
+                        areas: prev.areas.includes(area) 
+                          ? prev.areas.filter(a => a !== area)
+                          : [...prev.areas, area]
+                      }));
+                    }}
+                    className={`p-4 rounded-xl border transition-all duration-200 hover:shadow-md
+                      ${userProfile.areas.includes(area)
+                        ? 'border-blue-500 bg-blue-50 shadow-sm'
+                        : 'border-gray-200 hover:border-blue-200'
+                      }`}
+                  >
+                    <span className="text-lg font-medium">{area}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-4 mt-8">
-              {areas.map((area) => (
-                <button
-                  key={area}
-                  onClick={() => {
-                    setUserProfile(prev => ({
-                      ...prev,
-                      areas: prev.areas.includes(area) 
-                        ? prev.areas.filter(a => a !== area)
-                        : [...prev.areas, area]
-                    }));
-                  }}
-                  className={`p-4 rounded-xl border transition-all duration-200 hover:shadow-md
-                    ${userProfile.areas.includes(area)
-                      ? 'border-blue-500 bg-blue-50 shadow-sm'
-                      : 'border-gray-200 hover:border-blue-200'
-                    }`}
-                >
-                  <span className="text-lg font-medium">{area}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        );
+          );
 
       case 3:
         return (
@@ -180,24 +185,26 @@ const UserOnboarding = () => {
         return (
           <div className="max-w-2xl mx-auto space-y-6">
             <div className="text-center">
-              <h2 className="text-3xl font-bold tracking-tight">Connect your LinkedIn</h2>
-              <p className="mt-2 text-lg text-gray-600">This helps us personalize your experience (Optional)</p>
+              <h2 className="text-3xl font-bold tracking-tight">Social Media (To be replaced with link parsing)</h2>
+              <p className="mt-2 text-lg text-gray-600">This helps us provide better recommendations</p>
             </div>
             <div className="mt-8">
-              <input
-                type="text"
-                placeholder="LinkedIn Profile URL"
+              <textarea
+                placeholder="Share your interests, goals, and what you'd like to learn about..."
                 value={userProfile.linkedinUrl}
                 onChange={(e) => setUserProfile(prev => ({
                   ...prev,
                   linkedinUrl: e.target.value
                 }))}
+                rows={6}
                 className="w-full p-4 rounded-xl border border-gray-200 focus:border-blue-500 
                          focus:ring-2 focus:ring-blue-200 outline-none transition-all duration-200"
               />
             </div>
           </div>
         );
+      default:
+        return null;
     }
   };
 
@@ -220,30 +227,34 @@ const UserOnboarding = () => {
         }
       }
 
-      if (authUser) {
-        // Wait for a short delay to ensure Firebase auth state is updated
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        const profileData = {
-          ...userProfile,
-          reading: `Age: ${userProfile.age}, Areas: ${userProfile.areas.join(', ')}`,
-          interests: userProfile.areas.join(', '),
-          motivation: `Inspired by: ${userProfile.inspirations.join(', ')}`,
-          personal: `Gender: ${userProfile.gender}, Age: ${userProfile.age}`,
-          preferences: userProfile.areas.join(', '),
-          userId: authUser.uid,
-          createdAt: new Date().toISOString()
-        };
-
-        // Save directly to Firebase Realtime Database
-        const profileRef = ref(database, `profiles/${authUser.uid}`);
-        await set(profileRef, profileData);
-
-        // Update local profile state
-        await updateProfile(profileData);
-        
-        router.push('/profile');
+      if (!authUser) {
+        throw new Error('Authentication failed');
       }
+
+      // Wait for auth state to fully update
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Process profile data through LLM first
+      const processedProfile = await processOnboardingData(userProfile);
+
+      const profileData = {
+        ...userProfile,
+        reading: processedProfile.reading,
+        interests: processedProfile.interests,
+        motivation: processedProfile.motivation,
+        personal: processedProfile.personal,
+        userId: authUser.uid,
+        createdAt: new Date().toISOString()
+      };
+
+      // Save to Firebase
+      const profileRef = ref(database, `profiles/${authUser.uid}`);
+      await set(profileRef, profileData);
+
+      // Update context after saving to Firebase
+      await updateProfile(profileData);
+
+      router.push('/profile');
     } catch (error) {
       console.error('Auth error:', error);
       setAuthError(error.message);
@@ -365,7 +376,7 @@ const UserOnboarding = () => {
         try {
           await router.push('/profile');
         } catch (error) {
-          console.error('Router push failed, using window.location:', error);
+          console.error('Router navigation failed:', error);
           window.location.href = '/profile';
         }
       } catch (error) {

@@ -13,21 +13,22 @@ export async function processOnboardingData(userProfile) {
   }
 
   const prompt = `
-    Based on the following user information, generate comprehensive profile sections:
+    Based on the following user information, generate detailed profile sections:
     
     Age: ${userProfile.age}
     Gender: ${userProfile.gender}
     Areas of Interest: ${userProfile.areas.join(', ')}
     Inspirational Figures: ${userProfile.inspirations.join(', ')}
-    LinkedIn URL: ${userProfile.linkedinUrl || 'Not provided'}
+    Additional Text: ${userProfile.textContent || 'Not provided'}
 
-    Please provide detailed, natural-language responses for each section:
-    1. Reading Profile & Preferences: Describe their learning style and preferences based on their areas of interest
-    2. Interests & Expertise: Analyze their chosen areas and potential expertise
-    3. Motivation & Goals: Based on their inspirational figures and areas of interest
-    4. Personal Context: Synthesize their demographic info and professional context
+    Generate natural language descriptions for each section. Be specific and detailed:
 
-    Format the response as a JSON object with keys: reading, interests, motivation, personal
+    1. Reading Profile: Analyze their potential learning style and reading preferences based on their interests and background.
+    2. Interests & Expertise: Create a narrative about their interests, potential skills, and areas of expertise.
+    3. Motivation & Goals: Based on their inspirational figures and interests, describe their likely motivations and aspirations.
+    4. Personal Context: Create a comprehensive personal profile combining their demographic info and personal details.
+
+    Return ONLY a JSON object with these exact keys: reading, interests, motivation, personal
   `;
 
   try {
@@ -36,7 +37,7 @@ export async function processOnboardingData(userProfile) {
       messages: [
         {
           role: "system",
-          content: "You are a professional profile analyzer that creates detailed, natural-language descriptions of user profiles based on their information."
+          content: "You are a professional profile analyzer. Create detailed, natural-language descriptions based on user information. Focus on insights and connections between different aspects of their profile."
         },
         {
           role: "user",
@@ -46,7 +47,6 @@ export async function processOnboardingData(userProfile) {
       temperature: 0.7,
     });
 
-    // Parse the response to ensure it's in the correct format
     const response = JSON.parse(completion.choices[0].message.content);
     return response;
   } catch (error) {

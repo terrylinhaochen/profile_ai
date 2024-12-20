@@ -3,55 +3,13 @@ import React, { useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { useProfile } from '../../context/ProfileContext';
 import { auth } from '../../firebase/config';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../../firebase/config';
+import { ref, get, set, onValue } from 'firebase/database';
+import { database } from '../../firebase/config';
+import { generateRecommendations } from '../../utils/recommendationsProcessor';
 import TopOfMindSection from './TopOfMindSection';
 import CareerGrowthSection from './CareerGrowthSection';
 import PersonalInterestsSection from './PersonalInterestsSection';
 import LoadingSpinner from '../shared/LoadingSpinner';
-
-// Sample recommendations (move this to a separate file if you prefer)
-const sampleRecommendations = {
-  topOfMind: [
-    {
-      title: "Deep Work",
-      author: "Cal Newport",
-      description: "Rules for Focused Success in a Distracted World",
-      relevance: "Helps improve concentration and productivity",
-      keyTakeaways: [
-        "Eliminate distractions to focus deeply",
-        "Schedule deep work sessions",
-        "Build routines and rituals"
-      ]
-    }
-  ],
-  careerGrowth: [
-    {
-      title: "Atomic Habits",
-      author: "James Clear",
-      description: "An Easy & Proven Way to Build Good Habits & Break Bad Ones",
-      relevance: "Perfect for developing professional habits",
-      keyTakeaways: [
-        "Make small changes for big results",
-        "Focus on systems over goals",
-        "Use habit stacking"
-      ]
-    }
-  ],
-  personalInterests: [
-    {
-      title: "The Psychology of Money",
-      author: "Morgan Housel",
-      description: "Timeless lessons on wealth, greed, and happiness",
-      relevance: "Understanding personal finance and behavior",
-      keyTakeaways: [
-        "Long-term thinking is key",
-        "Luck and risk are important factors",
-        "Manage your psychology around money"
-      ]
-    }
-  ]
-};
 
 const RecommendationsPage = () => {
   const [recommendations, setRecommendations] = useState(null);
@@ -64,22 +22,19 @@ const RecommendationsPage = () => {
       setLoading(true);
       setError(null);
 
+      if (!profile) {
+        throw new Error('Profile not found. Please complete your profile first.');
+      }
+
       if (auth.currentUser) {
-        // Try to get existing recommendations from Firestore
-        const docRef = doc(db, 'recommendations', auth.currentUser.uid);
-        const docSnap = await getDoc(docRef);
+        // Generate new recommendations using LLM
+        const generatedRecommendations = await generateRecommendations(profile);
         
-        if (docSnap.exists()) {
-          setRecommendations(docSnap.data());
-          return;
-        }
+        // Save to Realtime Database
+        const recommendationsRef = ref(database, `recommendations/${auth.currentUser.uid}`);
+        await set(recommendationsRef, generatedRecommendations);
         
-        // If no existing recommendations, save and use sample data
-        await setDoc(docRef, sampleRecommendations);
-        setRecommendations(sampleRecommendations);
-      } else {
-        // If not logged in, just use sample data
-        setRecommendations(sampleRecommendations);
+        setRecommendations(generatedRecommendations);
       }
     } catch (error) {
       console.error('Error fetching recommendations:', error);
@@ -90,7 +45,27 @@ const RecommendationsPage = () => {
   };
 
   useEffect(() => {
-    fetchRecommendations();
+    if (auth.currentUser && profile) {
+      // Set up real-time listener for recommendations
+      const recommendationsRef = ref(database, `recommendations/${auth.currentUser.uid}`);
+      const unsubscribe = onValue(recommendationsRef, async (snapshot) => {
+        try {
+          if (snapshot.exists()) {
+            setRecommendations(snapshot.val());
+          } else {
+            // If no recommendations exist, generate them
+            await fetchRecommendations();
+          }
+          setLoading(false);
+        } catch (error) {
+          console.error('Error in recommendations listener:', error);
+          setError(error.message);
+          setLoading(false);
+        }
+      });
+
+      return () => unsubscribe();
+    }
   }, [profile]);
 
   return (

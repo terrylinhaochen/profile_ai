@@ -48,7 +48,11 @@ const UserOnboarding = () => {
   const genderOptions = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
 
   useEffect(() => {
+    console.log('User:', user);
+    console.log('Profile:', profile);
+    
     if (user && profile) {
+      console.log('Attempting to redirect to /profile');
       router.push('/profile');
     }
   }, [user, profile, router]);
@@ -317,6 +321,31 @@ const UserOnboarding = () => {
     </div>
   );
 
+  const handleFinalStep = async () => {
+    if (!user) {
+      setShowAuth(true);
+    } else {
+      try {
+        const profileData = {
+          ...userProfile,
+          reading: `Age: ${userProfile.age}, Areas: ${userProfile.areas.join(', ')}`,
+          interests: userProfile.areas.join(', '),
+          motivation: `Inspired by: ${userProfile.inspirations.join(', ')}`,
+          personal: `Gender: ${userProfile.gender}, Age: ${userProfile.age}`,
+          preferences: userProfile.areas.join(', '),
+          userId: user.uid,
+          createdAt: new Date().toISOString()
+        };
+
+        await updateProfile(profileData);
+        window.location.href = '/profile';
+      } catch (error) {
+        console.error('Error saving profile:', error);
+        setAuthError(error.message);
+      }
+    }
+  };
+
   if (user && profile) {
     return null;
   }
@@ -366,7 +395,7 @@ const UserOnboarding = () => {
         <button
           onClick={() => {
             if (step === 4) {
-              setShowAuth(true); // Show auth modal instead of completing directly
+              handleFinalStep();
             } else {
               setStep(prev => prev + 1);
             }

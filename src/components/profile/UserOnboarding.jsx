@@ -5,6 +5,7 @@ import { useProfile } from '../../context/ProfileContext';
 import { useRouter } from 'next/navigation';
 import { FcGoogle } from 'react-icons/fc';
 import { HiMail } from 'react-icons/hi';
+import { processOnboardingData } from '../../utils/profileProcessor';
 
 const UserOnboarding = () => {
   const [step, setStep] = useState(1);
@@ -48,12 +49,12 @@ const UserOnboarding = () => {
   const genderOptions = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
 
   useEffect(() => {
-    console.log('User:', user);
-    console.log('Profile:', profile);
+    console.log('UserOnboarding useEffect - User:', user);
+    console.log('UserOnboarding useEffect - Profile:', profile);
     
     if (user && profile) {
       console.log('Attempting to redirect to /profile');
-      router.push('/profile');
+      router.push('/profile').catch(console.error);
     }
   }, [user, profile, router]);
 
@@ -323,25 +324,31 @@ const UserOnboarding = () => {
 
   const handleFinalStep = async () => {
     if (!user) {
+      console.log('No user, showing auth modal');
       setShowAuth(true);
     } else {
+      console.log('User exists, processing and saving profile');
       try {
+        // Add loading state if needed
+        setAuthError(''); // Clear any previous errors
+        
+        // Process the profile data through LLM
+        const processedProfile = await processOnboardingData(userProfile);
+        
         const profileData = {
           ...userProfile,
-          reading: `Age: ${userProfile.age}, Areas: ${userProfile.areas.join(', ')}`,
-          interests: userProfile.areas.join(', '),
-          motivation: `Inspired by: ${userProfile.inspirations.join(', ')}`,
-          personal: `Gender: ${userProfile.gender}, Age: ${userProfile.age}`,
-          preferences: userProfile.areas.join(', '),
+          ...processedProfile,
           userId: user.uid,
           createdAt: new Date().toISOString()
         };
 
         await updateProfile(profileData);
+        console.log('Profile updated successfully');
+        
         window.location.href = '/profile';
       } catch (error) {
         console.error('Error saving profile:', error);
-        setAuthError(error.message);
+        setAuthError(error.message || 'Error processing profile');
       }
     }
   };
@@ -351,15 +358,15 @@ const UserOnboarding = () => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <main className="max-w-5xl mx-auto px-4">
       {showAuth && renderAuth()}
       
       {/* Progress bar */}
-      <div className="max-w-2xl mx-auto mb-12">
-        <div className="flex justify-between relative">
-          <div className="absolute top-1/2 h-0.5 w-full bg-gray-200 -z-10"></div>
+      <div className="max-w-2xl mx-auto mb-12 mt-8">
+        <div className="flex justify-between items-center relative">
+          <div className="absolute top-1/2 h-0.5 w-full bg-gray-200 -z-10 transform -translate-y-1/2"></div>
           {[1, 2, 3, 4].map((stepNumber) => (
-            <div key={stepNumber} className="flex flex-col items-center gap-2">
+            <div key={stepNumber} className="flex flex-col items-center gap-2 bg-gray-50 px-2">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center
                 transition-colors duration-200 font-medium
                 ${step >= stepNumber 
@@ -368,7 +375,7 @@ const UserOnboarding = () => {
               >
                 {stepNumber}
               </div>
-              <span className={`text-sm font-medium
+              <span className={`text-sm font-medium whitespace-nowrap
                 ${step >= stepNumber ? 'text-blue-500' : 'text-gray-500'}`}>
                 {['About You', 'Areas', 'Inspiration', 'Connect'][stepNumber - 1]}
               </span>
@@ -383,7 +390,7 @@ const UserOnboarding = () => {
       </div>
 
       {/* Navigation */}
-      <div className="flex justify-between max-w-2xl mx-auto">
+      <div className="flex justify-between max-w-2xl mx-auto pb-8">
         <button
           onClick={() => setStep(prev => prev - 1)}
           disabled={step === 1}
@@ -406,7 +413,7 @@ const UserOnboarding = () => {
           {step === 4 ? 'View Profile' : 'Continue'}
         </button>
       </div>
-    </div>
+    </main>
   );
 };
 

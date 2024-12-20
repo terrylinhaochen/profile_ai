@@ -1,35 +1,21 @@
 'use client';
-import { Inter } from 'next/font/google';
-import { AuthProvider } from '../context/AuthContext';
-import { ProfileProvider } from '../context/ProfileContext';
+import Providers from '../components/Providers';
 import Navigation from '../components/shared/Navigation';
-import { useState, useEffect } from 'react';
-import './globals.css';
-
-const inter = Inter({ subsets: ['latin'] });
+import '../app/globals.css';
 
 export default function RootLayout({ children }) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return null;
-  }
-
   return (
-    <html lang="en" className={inter.className}>
-      <body>
-        <AuthProvider>
-          <ProfileProvider>
+    <html lang="en" className="h-full">
+      <head />
+      <body className="min-h-full bg-gray-50 antialiased">
+        <Providers>
+          <div className="flex flex-col min-h-screen">
             <Navigation />
-            <main className="min-h-screen bg-gray-50">
+            <main className="flex-1">
               {children}
             </main>
-          </ProfileProvider>
-        </AuthProvider>
+          </div>
+        </Providers>
       </body>
     </html>
   );

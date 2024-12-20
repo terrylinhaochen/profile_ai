@@ -17,40 +17,38 @@ const ProfilePage = ({ userProfile }) => {
 
   const categories = [
     {
-      title: "Reading Profile",
+      title: "Reading Profile & Preferences",
       icon: <Book className="w-5 h-5" />,
       content: userProfile?.reading || "No reading profile information yet",
-      color: "blue"
+      color: "blue",
+      span: "col-span-2"
     },
     {
-      title: "Interests",
+      title: "Interests & Expertise",
       icon: <Brain className="w-5 h-5" />,
       content: userProfile?.interests || "No interests recorded yet",
-      color: "purple"
+      color: "purple",
+      span: "col-span-1"
     },
     {
-      title: "Motivation",
+      title: "Motivation & Goals",
       icon: <Target className="w-5 h-5" />,
       content: userProfile?.motivation || "No motivation information yet",
-      color: "green"
+      color: "green",
+      span: "col-span-1"
     },
     {
       title: "Personal Context",
       icon: <User className="w-5 h-5" />,
       content: userProfile?.personal || "No personal context added yet",
-      color: "orange"
-    },
-    {
-      title: "Preferences",
-      icon: <History className="w-5 h-5" />,
-      content: userProfile?.preferences || "No preferences set yet",
-      color: "pink"
+      color: "orange",
+      span: "col-span-2"
     }
   ];
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
+      <div className="max-w-6xl mx-auto px-4">
         {/* Header with both buttons */}
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -89,22 +87,22 @@ const ProfilePage = ({ userProfile }) => {
           </div>
         )}
 
-        {/* Profile Categories */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Modified Profile Categories Grid */}
+        <div className="grid grid-cols-2 gap-6">
           {categories.map((category) => (
             <div
               key={category.title}
-              className={`bg-white rounded-lg border border-gray-200 p-4 
-                       hover:shadow-md transition-shadow`}
+              className={`bg-white rounded-lg border border-gray-200 p-6 
+                       hover:shadow-md transition-shadow ${category.span}`}
             >
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-3 mb-4">
                 <div className={`p-2 rounded-lg bg-${category.color}-50 
                               text-${category.color}-500`}>
                   {category.icon}
                 </div>
-                <h2 className="font-medium text-gray-900">{category.title}</h2>
+                <h2 className="font-medium text-lg text-gray-900">{category.title}</h2>
               </div>
-              <div className="text-gray-600 text-sm whitespace-pre-wrap">
+              <div className="text-gray-600 text-base leading-relaxed whitespace-pre-wrap">
                 {category.content}
               </div>
             </div>

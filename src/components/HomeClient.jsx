@@ -9,12 +9,12 @@ export default function HomeClient() {
   const { profile, updateProfile } = useProfile();
 
   return (
-    <div className="container mx-auto px-4">
+    <main className="container mx-auto px-4">
       {!profile ? (
         <UserOnboarding onComplete={updateProfile} />
       ) : (
         <ChatInterface userProfile={profile} />
       )}
-    </div>
+    </main>
   );
 }

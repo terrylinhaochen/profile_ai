@@ -344,45 +344,41 @@ const UserOnboarding = () => {
     </div>
   );
 
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const handleFinalStep = async () => {
-    console.log('handleFinalStep called, user:', user);
-
     if (!user) {
-      console.log('No user, showing auth modal');
       setShowAuth(true);
-    } else {
-      console.log('User exists, processing and saving profile');
-      try {
-        setAuthError('');
-        
-        // Process the profile data through LLM
-        const processedProfile = await processOnboardingData(userProfile);
-        
-        const profileData = {
-          ...userProfile,
-          ...processedProfile,
-          userId: user.uid,
-          createdAt: new Date().toISOString()
-        };
+      return;
+    }
 
-        // Save to Realtime Database
-        const profileRef = ref(database, `profiles/${user.uid}`);
-        await set(profileRef, profileData);
+    try {
+      setIsProcessing(true);
+      setAuthError('');
+      
+      // Process the profile data through LLM
+      const processedProfile = await processOnboardingData(userProfile);
+      
+      const profileData = {
+        ...userProfile,
+        ...processedProfile,
+        userId: user.uid,
+        createdAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString()
+      };
 
-        // Update local profile state
-        await updateProfile(profileData);
+      // Save to Realtime Database
+      const profileRef = ref(database, `profiles/${user.uid}`);
+      await set(profileRef, profileData);
 
-        // Use both router.push and window.location as fallback
-        try {
-          await router.push('/profile');
-        } catch (error) {
-          console.error('Router navigation failed:', error);
-          window.location.href = '/profile';
-        }
-      } catch (error) {
-        console.error('Error saving profile:', error);
-        setAuthError(error.message || 'Error processing profile');
-      }
+      // Update local profile state
+      await updateProfile(profileData);
+      router.push('/profile');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      setAuthError(error.message || 'Error processing profile');
+    } finally {
+      setIsProcessing(false);
     }
   };
 

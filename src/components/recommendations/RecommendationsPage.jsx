@@ -46,21 +46,14 @@ const RecommendationsPage = () => {
 
   useEffect(() => {
     if (auth.currentUser && profile) {
-      // Set up real-time listener for recommendations
       const recommendationsRef = ref(database, `recommendations/${auth.currentUser.uid}`);
-      const unsubscribe = onValue(recommendationsRef, async (snapshot) => {
-        try {
-          if (snapshot.exists()) {
-            setRecommendations(snapshot.val());
-          } else {
-            // If no recommendations exist, generate them
-            await fetchRecommendations();
-          }
+      const unsubscribe = onValue(recommendationsRef, (snapshot) => {
+        if (snapshot.exists()) {
+          setRecommendations(snapshot.val());
           setLoading(false);
-        } catch (error) {
-          console.error('Error in recommendations listener:', error);
-          setError(error.message);
-          setLoading(false);
+        } else {
+          // Only generate if no recommendations exist
+          fetchRecommendations();
         }
       });
 

@@ -11,7 +11,10 @@ const ProfilePage = () => {
   const { user } = useAuth();
   const { profile, clearProfile } = useProfile();
   const [profileData, setProfileData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedProfile, setEditedProfile] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -21,6 +24,7 @@ const ProfilePage = () => {
         if (data) {
           setProfileData(data);
         }
+        setIsLoading(false);
       });
       return () => unsubscribe();
     }
@@ -29,6 +33,22 @@ const ProfilePage = () => {
   const handleEditProfile = async () => {
     await clearProfile();
     router.push('/');
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      const updatedProfile = {
+        ...profileData,
+        ...editedProfile,
+        lastUpdated: new Date().toISOString()
+      };
+
+      const profileRef = ref(database, `profiles/${user.uid}`);
+      await set(profileRef, updatedProfile);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error saving profile:', error);
+    }
   };
 
   const categories = [
@@ -57,6 +77,15 @@ const ProfilePage = () => {
       color: "orange",
     }
   ];
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <p className="text-gray-600">Loading profile...</p>
+      </div>
+    );
+  }
 
   if (!profileData) {
     return (
@@ -94,9 +123,21 @@ const ProfilePage = () => {
               </div>
               <h2 className="font-medium text-lg text-gray-900">{category.title}</h2>
             </div>
-            <div className="text-gray-600 text-base leading-relaxed whitespace-pre-wrap">
-              {category.content}
-            </div>
+            {isEditing ? (
+              <textarea
+                value={editedProfile?.[category.key] || category.content}
+                onChange={(e) => setEditedProfile(prev => ({
+                  ...prev,
+                  [category.key]: e.target.value
+                }))}
+                className="w-full p-3 border rounded-lg"
+                rows={4}
+              />
+            ) : (
+              <div className="text-gray-600 text-base leading-relaxed whitespace-pre-wrap">
+                {category.content}
+              </div>
+            )}
           </div>
         ))}
       </div>

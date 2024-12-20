@@ -17,49 +17,41 @@ const RecommendationsPage = () => {
   const [error, setError] = useState(null);
   const { profile } = useProfile();
 
-  const fetchRecommendations = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      if (!profile) {
-        throw new Error('Profile not found. Please complete your profile first.');
-      }
-
-      if (auth.currentUser) {
-        // Generate new recommendations using LLM
-        const generatedRecommendations = await generateRecommendations(profile);
-        
-        // Save to Realtime Database
-        const recommendationsRef = ref(database, `recommendations/${auth.currentUser.uid}`);
-        await set(recommendationsRef, generatedRecommendations);
-        
-        setRecommendations(generatedRecommendations);
-      }
-    } catch (error) {
-      console.error('Error fetching recommendations:', error);
-      setError(error.message || 'Failed to fetch recommendations');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    if (auth.currentUser && profile) {
+    if (auth.currentUser) {
       const recommendationsRef = ref(database, `recommendations/${auth.currentUser.uid}`);
       const unsubscribe = onValue(recommendationsRef, (snapshot) => {
         if (snapshot.exists()) {
           setRecommendations(snapshot.val());
           setLoading(false);
-        } else {
-          // Only generate if no recommendations exist
-          fetchRecommendations();
         }
       });
 
       return () => unsubscribe();
     }
-  }, [profile]);
+  }, []);
+
+  const handleRefresh = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (!profile) {
+        throw new Error('Profile not found. Please complete your profile first.');
+      }
+
+      const newRecommendations = await generateRecommendations(profile);
+      const recommendationsRef = ref(database, `recommendations/${auth.currentUser.uid}`);
+      await set(recommendationsRef, newRecommendations);
+      
+      setRecommendations(newRecommendations);
+    } catch (error) {
+      console.error('Error refreshing recommendations:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -73,7 +65,7 @@ const RecommendationsPage = () => {
           </p>
         </div>
         <button
-          onClick={fetchRecommendations}
+          onClick={handleRefresh}
           className="px-4 py-2 text-blue-500 hover:text-blue-600 
                    flex items-center gap-2"
         >
@@ -96,11 +88,7 @@ const RecommendationsPage = () => {
           <CareerGrowthSection books={recommendations.careerGrowth} />
           <PersonalInterestsSection books={recommendations.personalInterests} />
         </div>
-      ) : !error && (
-        <div className="text-center py-12 text-gray-600">
-          No recommendations available. Try refreshing.
-        </div>
-      )}
+      ) : null}
     </div>
   );
 };

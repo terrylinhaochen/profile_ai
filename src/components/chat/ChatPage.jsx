@@ -9,6 +9,7 @@ import { Send, ChevronRight } from 'lucide-react';
 import { sanitizeForFirebase } from '../../utils/helpers';
 import { ref, set } from 'firebase/database';
 import { database } from '../../firebase/config';
+import { logger } from '../../utils/logger';
 
 const ChatPage = () => {
   const { user, updateUserProfile } = useAuth();
@@ -144,9 +145,14 @@ const ChatPage = () => {
     if (!inputValue.trim()) return;
 
     try {
-      // If no book is selected yet, try to extract it from the question
+      logger.info('Processing chat submission', { 
+        hasCurrentBook: !!currentBook,
+        inputLength: inputValue.length 
+      });
+
       if (!currentBook) {
         const bookInfo = await extractBookFromQuestion(inputValue);
+        logger.debug('Book extraction result', { bookInfo });
         
         if (bookInfo?.bookFound) {
           const safeBook = {
@@ -156,6 +162,7 @@ const ChatPage = () => {
             description: ''
           };
           setCurrentBook(safeBook);
+          logger.info('Book selected', { book: safeBook });
           
           // Add initial message about the book
           setMessages(prev => [...prev,
@@ -202,6 +209,7 @@ const ChatPage = () => {
       setInputValue('');
       setDiscussionCount(prev => prev + 1);
     } catch (error) {
+      logger.error('Error in chat submission', error);
       console.error('Error:', error);
       setMessages(prev => [
         ...prev.slice(0, -1),
@@ -214,45 +222,41 @@ const ChatPage = () => {
   };
 
   const handleEndChat = async () => {
-    if (!currentBook || messages.length === 0) return;
-
     try {
-      setMessages(prev => [...prev, {
-        type: 'assistant',
-        content: 'Updating profile...',
-      }]);
-
-      const analysis = await processEndChat(
-        messages,
-        currentBook,
-        user?.uid || 'anonymous'
-      );
-
-      if (user?.uid) {
-        const chatRef = ref(database, `chatHistory/${user.uid}/${currentBook.id}`);
-        await set(chatRef, {
-          timestamp: new Date().toISOString(),
-          book: currentBook,
-          analysis: analysis
-        });
+      logger.info('Starting chat end process');
+      
+      if (!currentBook || messages.length === 0) {
+        logger.warn('Cannot end chat: missing book or messages');
+        return;
       }
+
+      logger.debug('Processing chat for profile update', {
+        bookTitle: currentBook.title,
+        messageCount: messages.length
+      });
+
+      const chatAnalysis = await processEndChat(messages, currentBook, user.uid);
+      logger.info('Chat analysis completed', { chatAnalysis });
+
+      // Update profile with chat results
+      await updateUserProfile(user.uid, {
+        bookTitle: currentBook.title,
+        insights: chatAnalysis.keyTakeaways,
+        topics: chatAnalysis.topics
+      });
+
+      logger.info('Chat ended and profile updated successfully');
 
       // Reset chat state
       setCurrentStep('aim');
-      setExplorationTopics(null);
-      setDiscussionCount(0);
-      setCurrentBook(null);
       setMessages([{
         type: 'assistant',
-        content: "Hello! Which book would you like to discuss? Just mention it in your question."
+        content: 'What book would you like to discuss next?'
       }]);
-
+      
     } catch (error) {
-      console.error('Error ending chat:', error);
-      setMessages(prev => [...prev, {
-        type: 'assistant',
-        content: 'I apologize, but I encountered an error while updating your profile.'
-      }]);
+      logger.error('Error ending chat', error);
+      // Handle error...
     }
   };
 

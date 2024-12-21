@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation';
 import { FcGoogle } from 'react-icons/fc';
 import { HiMail } from 'react-icons/hi';
 import { processOnboardingData } from '../../utils/profileProcessor';
-import { ref, set } from 'firebase/database';
+import { ref, set, get } from 'firebase/database';
 import { database } from '../../firebase/config';
+import { logger } from '../../utils/logger';
 
 const UserOnboarding = () => {
   const [step, setStep] = useState(1);
@@ -210,54 +211,85 @@ const UserOnboarding = () => {
 
   const handleAuthAndSaveProfile = async (authMethod, credentials = null) => {
     try {
+      logger.info('Starting auth process', { authMethod });
+      setIsProcessing(true);
       setAuthError('');
+      
       let authUser;
 
-      if (authMethod === 'google') {
-        authUser = await signInWithGoogle();
-      } else if (authMethod === 'email') {
-        try {
+      // 1. Authentication
+      try {
+        if (authMethod === 'google') {
+          authUser = await signInWithGoogle();
+        } else if (authMethod === 'email') {
           authUser = await signInWithEmail(credentials.email, credentials.password);
-        } catch (error) {
-          if (error.code === 'auth/user-not-found') {
-            authUser = await createUserWithEmail(credentials.email, credentials.password);
-          } else {
-            throw error;
-          }
         }
+        logger.info('Authentication successful', { 
+          userId: authUser?.uid,
+          isNewUser: authUser?.metadata?.creationTime === authUser?.metadata?.lastSignInTime 
+        });
+      } catch (authError) {
+        logger.error('Authentication failed', authError);
+        throw authError;
       }
 
-      if (!authUser) {
-        throw new Error('Authentication failed');
+      if (!authUser?.uid) {
+        throw new Error('No user ID after authentication');
       }
 
-      // Wait for auth state to fully update
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Process profile data through LLM first
+      // 2. Process Profile Data
+      logger.info('Processing profile data');
       const processedProfile = await processOnboardingData(userProfile);
-
+      
+      // 3. Prepare Profile Data
       const profileData = {
         ...userProfile,
-        reading: processedProfile.reading,
-        interests: processedProfile.interests,
-        motivation: processedProfile.motivation,
-        personal: processedProfile.personal,
+        ...processedProfile,
         userId: authUser.uid,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString()
       };
 
-      // Save to Firebase
-      const profileRef = ref(database, `profiles/${authUser.uid}`);
-      await set(profileRef, profileData);
+      // 4. Save to Firebase
+      try {
+        logger.info('Attempting to save profile', { 
+          userId: authUser.uid,
+          path: `profiles/${authUser.uid}`
+        });
 
-      // Update context after saving to Firebase
-      await updateProfile(profileData);
+        // Test write permission
+        const testRef = ref(database, `.info/connected`);
+        const connectedSnapshot = await get(testRef);
+        logger.debug('Database connection test', { 
+          connected: connectedSnapshot.val() 
+        });
 
+        const profileRef = ref(database, `profiles/${authUser.uid}`);
+        await set(profileRef, profileData);
+        
+        logger.info('Profile saved successfully');
+      } catch (dbError) {
+        logger.error('Database operation failed', dbError);
+        throw dbError;
+      }
+
+      // 5. Update Context
+      try {
+        await updateProfile(profileData);
+        logger.info('Profile context updated');
+      } catch (contextError) {
+        logger.error('Context update failed', contextError);
+        throw contextError;
+      }
+
+      // 6. Navigation
       router.push('/profile');
+      
     } catch (error) {
-      console.error('Auth error:', error);
-      setAuthError(error.message);
+      logger.error('Error in handleAuthAndSaveProfile', error);
+      setAuthError(error.message || 'An error occurred during profile creation');
+    } finally {
+      setIsProcessing(false);
     }
   };
 

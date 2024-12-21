@@ -5,6 +5,7 @@ import { db } from '../firebase/config';
 import { useAuth } from './AuthContext';
 import { ref, onValue, set } from 'firebase/database';
 import { database } from '../firebase/config';
+import { logger } from '../utils/logger';
 
 const ProfileContext = createContext();
 
@@ -13,39 +14,61 @@ export const ProfileProvider = ({ children }) => {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (user) {
-      // Listen for profile updates
-      const profileRef = ref(database, `profiles/${user.uid}`);
-      const unsubscribe = onValue(profileRef, (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          setProfile(data);
-        }
+    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+      logger.info('Auth state changed', { 
+        isAuthenticated: !!user,
+        userId: user?.uid 
       });
+      
+      if (user) {
+        const profileRef = ref(database, `profiles/${user.uid}`);
+        logger.debug('Setting up profile listener', { path: `profiles/${user.uid}` });
+        
+        const unsubscribeProfile = onValue(profileRef, (snapshot) => {
+          logger.debug('Profile data updated', { 
+            exists: snapshot.exists(),
+            userId: user.uid 
+          });
+          
+          if (snapshot.exists()) {
+            setProfile(snapshot.val());
+          }
+        }, (error) => {
+          logger.error('Profile listener error', error);
+        });
 
-      return () => unsubscribe();
-    } else {
-      setProfile(null);
-    }
-  }, [user]);
+        return () => unsubscribeProfile();
+      }
+    });
+
+    return () => unsubscribeAuth();
+  }, []);
 
   const updateProfile = async (profileData) => {
     try {
       if (!user) {
-        console.error('No user authenticated');
-        return;
+        logger.error('Update profile failed: No user authenticated');
+        throw new Error('No user authenticated');
       }
+
+      logger.info('Updating profile', { 
+        userId: user.uid,
+        updateType: profileData.type || 'general'
+      });
 
       const profileRef = ref(database, `profiles/${user.uid}`);
       await set(profileRef, profileData);
       setProfile(profileData);
+      
+      logger.info('Profile updated successfully');
     } catch (error) {
-      console.error('Error updating profile:', error);
+      logger.error('Error updating profile', error);
       throw error;
     }
   };
 
   const clearProfile = () => {
+    logger.info('Clearing profile data');
     setProfile(null);
   };
 

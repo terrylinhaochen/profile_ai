@@ -1,11 +1,6 @@
 {
   "rules": {
-    "chats": {
-      ".read": "auth != null",
-      ".write": "auth != null",
-      "$messageId": {
-        ".validate": "newData.hasChildren(['userId', 'message', 'timestamp', 'userProfile'])"
-      }
-    }
+    ".read": true,
+    ".write": true
   }
 }

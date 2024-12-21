@@ -1,3 +1,4 @@
+import { logger } from './logger';
 import OpenAI from 'openai';
 
 console.log('API Key available:', !!process.env.NEXT_PUBLIC_OPENAI_API_KEY);
@@ -8,7 +9,14 @@ const openai = new OpenAI({
 });
 
 export async function processOnboardingData(userProfile) {
+  logger.info('Starting profile processing', { 
+    age: userProfile.age,
+    gender: userProfile.gender,
+    areasCount: userProfile.areas?.length
+  });
+
   if (!process.env.NEXT_PUBLIC_OPENAI_API_KEY) {
+    logger.error('OpenAI API key missing');
     throw new Error('OpenAI API key is not configured');
   }
 
@@ -32,6 +40,11 @@ export async function processOnboardingData(userProfile) {
   `;
 
   try {
+    logger.debug('Sending profile data to OpenAI', {
+      areas: userProfile.areas,
+      inspirations: userProfile.inspirations
+    });
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
@@ -48,9 +61,12 @@ export async function processOnboardingData(userProfile) {
     });
 
     const response = JSON.parse(completion.choices[0].message.content);
+    logger.info('Profile processing completed successfully');
+    logger.debug('Processed profile data', { response });
+
     return response;
   } catch (error) {
-    console.error('Error processing profile:', error);
+    logger.error('Error processing profile', error);
     throw error;
   }
 }

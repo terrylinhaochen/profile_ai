@@ -1,24 +1,21 @@
-import axios from 'axios';
+import OpenAI from 'openai';
 
-const api = axios.create({
-  baseURL: 'https://api.openai.com/v1',
-  headers: {
-    'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}`,
-    'Content-Type': 'application/json'
-  }
+const openai = new OpenAI({
+  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+  dangerouslyAllowBrowser: true
 });
 
 // Helper function to handle OpenAI chat completions
 export async function generateAIResponse(messages, options = {}) {
   try {
-    const completion = await api.post('/chat/completions', {
+    const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: messages,
       temperature: options.temperature || 0.7,
       ...options
     });
 
-    return completion.data.choices[0].message.content;
+    return completion.choices[0].message.content;
   } catch (error) {
     console.error('OpenAI API Error:', error);
     throw new Error('Failed to generate AI response');
@@ -101,7 +98,7 @@ const extractJSONFromResponse = (response) => {
   }
 };
 
-const generateBookResponse = async (book, question, options = {}) => {
+export const generateBookResponse = async (book, question, options = {}) => {
   try {
     const systemPrompt = options.type === 'exploration_guide' 
       ? `You are an AI reading assistant helping explore ${book.title}. 
@@ -110,7 +107,7 @@ const generateBookResponse = async (book, question, options = {}) => {
          Provide thoughtful analysis and learning aids to help understand the book.
          ${RESPONSE_FORMAT}`;
 
-    const response = await api.post('/chat/completions', {
+    const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         {
@@ -125,7 +122,7 @@ const generateBookResponse = async (book, question, options = {}) => {
       temperature: 0.7,
     });
 
-    const aiResponse = response.data.choices[0].message.content;
+    const aiResponse = completion.choices[0].message.content;
     return extractJSONFromResponse(aiResponse);
   } catch (error) {
     console.error('Error calling OpenAI:', error);
@@ -133,9 +130,9 @@ const generateBookResponse = async (book, question, options = {}) => {
   }
 };
 
-const generateBookOverview = async (book, goal) => {
+export const generateBookOverview = async (book, goal) => {
   try {
-    const response = await api.post('/chat/completions', {
+    const completion = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [
         {
@@ -153,7 +150,7 @@ const generateBookOverview = async (book, goal) => {
       temperature: 0.7
     });
 
-    const aiResponse = response.data.choices[0].message.content;
+    const aiResponse = completion.choices[0].message.content;
     return extractJSONFromResponse(aiResponse);
   } catch (error) {
     console.error('Error generating book overview:', error);
@@ -163,7 +160,7 @@ const generateBookOverview = async (book, goal) => {
 
 const generateReflectionPrompts = async (book, discussionHistory) => {
   try {
-    const response = await api.post('/chat/completions', {
+    const response = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [
         {
@@ -180,7 +177,7 @@ const generateReflectionPrompts = async (book, discussionHistory) => {
       temperature: 0.7
     });
 
-    const aiResponse = response.data.choices[0].message.content;
+    const aiResponse = response.choices[0].message.content;
     return extractJSONFromResponse(aiResponse);
   } catch (error) {
     console.error('Error generating reflection prompts:', error);

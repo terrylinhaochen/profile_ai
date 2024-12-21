@@ -3,8 +3,8 @@ import { database } from '../firebase/config';
 import { ref, set, get, push } from 'firebase/database';
 
 export async function processBookDiscussion(book, userInput, userId, context = {}) {
-  if (!book?.id) {
-    throw new Error('Invalid book object');
+  if (!book?.id || !book?.title) {
+    throw new Error('Invalid book object: missing required fields');
   }
 
   try {
@@ -25,10 +25,10 @@ export async function processBookDiscussion(book, userInput, userId, context = {
     }
 
     // Store chat history if user is authenticated
-    if (userId) {
+    if (userId && userId !== 'anonymous') {
       try {
         const discussionRef = ref(database, `bookDiscussions/${userId}/${book.id}`);
-        const newMessageRef = push(discussionRef); // Generate unique key for each message
+        const newMessageRef = push(discussionRef);
 
         await set(newMessageRef, {
           timestamp: new Date().toISOString(),

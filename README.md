@@ -122,6 +122,58 @@ yarn dev
    - OpenAI generates personalized recommendations
    - Results are categorized and displayed in respective sections
 
+## Project Structure
+
+```
+src/
+├── app/                    # Next.js app directory
+│   ├── profile/           # Profile page route
+│   └── page.jsx           # Main app page
+├── components/            # React components
+│   ├── auth/             # Authentication components
+│   │   └── SignInForm.jsx
+│   ├── books/            # Book-related components
+│   │   ├── BookDiscussionPage.jsx
+│   │   └── LearningAid.jsx
+│   ├── chat/             # Chat interface components
+│   │   ├── BookSearch.jsx
+│   │   └── ChatPage.jsx
+│   ├── profile/          # Profile management components
+│   │   └── ProfilePage.jsx
+│   └── recommendations/  # Book recommendation components
+│       ├── BookModal.jsx
+│       ├── CareerGrowthSection.jsx
+│       ├── PersonalInterestsSection.jsx
+│       └── TopOfMindSection.jsx
+├── context/              # React Context providers
+│   ├── AuthContext.js    # Authentication context
+│   └── ProfileContext.js # User profile context
+├── firebase/             # Firebase configuration
+│   └── config.js
+├── hooks/                # Custom React hooks
+│   └── useChat.js
+├── lib/                  # Library code and constants
+│   └── constants.js
+└── utils/               # Utility functions
+    ├── bookDiscussion.js
+    ├── bookProcessor.js
+    ├── chatProcessor.js
+    ├── helpers.js
+    ├── logger.js
+    ├── openai.js
+    └── recommendationsProcessor.js
+```
+
+### Key Directories
+
+- **app/**: Next.js app router directory containing page routes
+- **components/**: Reusable React components organized by feature
+- **context/**: React Context providers for global state management
+- **firebase/**: Firebase configuration and initialization
+- **hooks/**: Custom React hooks for shared logic
+- **lib/**: Constants and shared library code
+- **utils/**: Utility functions for various features
+
 ## Contributing
 
 1. Fork the repository
